@@ -70,7 +70,13 @@
 
 @layer utilities {
   .text-label {
-    @apply text-label uppercase tracking-[0.05em] text-text-muted font-body font-medium;
+    font-size: 11px;
+    line-height: 1.4;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    font-family: var(--font-jakarta), sans-serif;
+    font-weight: 500;
   }
 
   .stat-number {

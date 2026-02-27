@@ -13,8 +13,8 @@ Grip is a Whop-native app that detects at-risk community members and executes au
 ## Tech Stack
 
 ```
-Framework:      Next.js 14+ (App Router) + TypeScript
-Whop SDK:       @whop-apps/sdk (iFrame integration, auth, API access)
+Framework:      Next.js 15 (App Router) + TypeScript + React 19
+Whop SDK:       @whop/react + @whop/sdk (iFrame integration, auth, API access)
 Styling:        Tailwind CSS + custom design system (see Design Reference below)
 Charts:         Recharts
 Database:       PostgreSQL via Supabase (@supabase/supabase-js)
@@ -22,6 +22,7 @@ Cache:          Redis via Upstash (@upstash/redis)
 Jobs:           Inngest (background job scheduling — risk recalc, playbook steps, data sync)
 Email:          Resend (sending + open/click tracking)
 AI:             Anthropic Claude API (playbook message personalization)
+Testing:        Vitest + @testing-library/react (TDD — see Testing section below)
 Hosting:        Vercel
 Fonts:          Outfit (headings/numbers), Plus Jakarta Sans (body)
 ```
@@ -819,6 +820,51 @@ npm install @whop-apps/sdk @supabase/supabase-js @upstash/redis resend inngest r
 # Register Whop app at https://dash.whop.com/developer
 npm run dev
 ```
+
+---
+
+## Testing (TDD)
+
+This project uses **Test-Driven Development**. Write specs before or alongside implementation. All tests use **Vitest** with `@testing-library/react` for component tests.
+
+### Running Tests
+
+```bash
+npm test              # Run all specs once
+npm run test:watch    # Watch mode (re-run on file changes)
+npm run test:coverage # Run with V8 coverage report
+```
+
+### Test File Conventions
+
+- **Spec files live next to the code they test**, inside `__tests__/` directories:
+  - `src/lib/__tests__/risk-scoring.spec.ts` tests `src/lib/risk-scoring.ts`
+  - `src/components/ui/__tests__/Button.spec.tsx` tests `src/components/ui/Button.tsx`
+- **File naming:** `*.spec.ts` for pure logic, `*.spec.tsx` for components
+- **Pattern:** `describe` per module/component, `it` per behavior
+
+### What to Test
+
+| Layer | What to test | Example |
+|-------|-------------|---------|
+| **lib/** | Pure functions, algorithms, helpers | Risk scoring factors, plan gating logic, currency formatting |
+| **components/** | Render output, user interactions, conditional display | RiskPill shows correct color, Button variants render correctly |
+| **API routes** | Request/response contracts, error handling | Members endpoint returns filtered list, webhook validates signature |
+| **hooks/** | State changes, data fetching behavior | useMembers returns loading then data |
+
+### TDD Workflow
+
+1. **Write the spec first** — define expected behavior before implementation
+2. **Run `npm test`** — confirm the test fails (red)
+3. **Implement the minimal code** to make the test pass (green)
+4. **Refactor** — clean up while keeping tests green
+5. **All tests must pass before committing** — run `npm test` before every commit
+
+### Testing Setup
+
+- **Config:** `vitest.config.ts` (jsdom environment, React plugin, `@/` path alias)
+- **Setup file:** `src/__tests__/setup.ts` (loads `@testing-library/jest-dom` matchers)
+- **Globals:** `describe`, `it`, `expect`, `vi` are available without imports (vitest globals enabled)
 
 ---
 
