@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════════════════════
+   GRIP — Design System CSS Custom Properties
+   ═══════════════════════════════════════════════════════ */
+
+@layer base {
+  /* Dark mode (default) */
+  :root {
+    --surface-bg: #09090b;
+    --surface-raised: #111114;
+    --surface-card: #16161a;
+    --surface-card-hover: #1c1c22;
+    --surface-input: #111114;
+    --surface-overlay: rgba(0, 0, 0, 0.6);
+
+    --border: rgba(255, 255, 255, 0.06);
+    --border-hover: rgba(255, 255, 255, 0.1);
+
+    --text-primary: #f0f0f3;
+    --text-secondary: #8d8d9b;
+    --text-muted: #55555f;
+
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Light mode */
+  .light {
+    --surface-bg: #f8f8fa;
+    --surface-raised: #ffffff;
+    --surface-card: #ffffff;
+    --surface-card-hover: #f5f5f8;
+    --surface-input: #f0f0f3;
+    --surface-overlay: rgba(0, 0, 0, 0.3);
+
+    --border: rgba(0, 0, 0, 0.07);
+    --border-hover: rgba(0, 0, 0, 0.12);
+
+    --text-primary: #111114;
+    --text-secondary: #6b6b76;
+    --text-muted: #9d9da8;
+
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.1);
+  }
+
+  html,
+  body {
+    @apply bg-surface-bg text-text-primary font-body antialiased;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Allow iFrame to fill container */
+  html,
+  body,
+  #__next {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   Utility Classes
+   ═══════════════════════════════════════════════════════ */
+
+@layer utilities {
+  .text-label {
+    @apply text-label uppercase tracking-[0.05em] text-text-muted font-body font-medium;
+  }
+
+  .stat-number {
+    @apply font-heading font-extrabold tracking-heading;
+  }
+
+  .card-base {
+    @apply bg-surface-card border border-border rounded-card;
+  }
+
+  .card-hover {
+    @apply hover:bg-surface-card-hover hover:border-border-hover transition-colors;
+  }
+
+  /* Staggered fade-in for list items */
+  .stagger-item {
+    @apply opacity-0 animate-fade-slide-in;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   Scrollbar Styling (dark mode friendly)
+   ═══════════════════════════════════════════════════════ */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
