@@ -30,10 +30,10 @@ export function useCommunity(whopCompanyId: string): UseCommunityResult {
 
     try {
       const res = await fetch(`/api/community?whop_company_id=${encodeURIComponent(whopCompanyId)}`);
-      if (!res.ok) {
-        throw new Error(`Failed to fetch community: ${res.status}`);
-      }
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? `Failed to fetch community (${res.status})`);
+      }
       setCommunity(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch community");
