@@ -1,5 +1,6 @@
 import Whop from "@whop/sdk";
 
 export const whopApi = new Whop({
-  token: process.env.WHOP_API_KEY,
+  apiKey: process.env.WHOP_API_KEY,
+  appID: process.env.WHOP_APP_ID,
 });
