@@ -44,6 +44,30 @@ export interface PlaybookEnrollment {
   enrolled_at: string;
   completed_at: string | null;
   outcome: string | null;
+  /** Joined from playbooks table when fetched via member detail API */
+  playbooks?: {
+    name: string;
+    emoji: string;
+  };
+}
+
+export interface OutreachLogEntry {
+  id: string;
+  member_id: string;
+  community_id: string;
+  channel: "email" | "whop_chat" | "discord_dm" | "telegram" | "manual";
+  template_id: string | null;
+  playbook_enrollment_id: string | null;
+  subject: string | null;
+  content: string;
+  sent_at: string;
+  delivered_at: string | null;
+  opened_at: string | null;
+  clicked_at: string | null;
+  responded_at: string | null;
+  bounced: boolean;
+  outcome: string | null;
+  created_at: string;
 }
 
 export interface PlaybookStepExecution {
