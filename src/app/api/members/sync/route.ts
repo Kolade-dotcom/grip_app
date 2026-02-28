@@ -46,6 +46,7 @@ export async function POST(request: Request) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Internal server error";
+    console.error("[sync] Error syncing members:", message, err);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

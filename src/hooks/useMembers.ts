@@ -94,7 +94,10 @@ export function useMembers({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ community_id: communityId }),
       });
-      if (!res.ok) throw new Error("Sync failed");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error ?? `Sync failed (${res.status})`);
+      }
 
       // After sync, recalculate risk scores
       await fetch("/api/risk/recalculate", {
@@ -105,8 +108,10 @@ export function useMembers({
 
       // Refetch members with updated data
       await fetchMembers();
-    } catch {
-      setError("Failed to sync data from Whop");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to sync data from Whop";
+      console.error("Sync error:", msg);
+      setError(msg);
     } finally {
       setSyncing(false);
     }
