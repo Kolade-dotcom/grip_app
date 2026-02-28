@@ -1,12 +1,13 @@
 "use client";
 
 import { GripLogo, GripWordmark } from "@/components/GripLogo";
-import { Button } from "@/components/ui/Button";
 
 interface TopNavProps {
   communityName: string;
   memberCount: number;
   syncedAgo?: string;
+  syncing?: boolean;
+  onSync?: () => void;
   onThemeToggle: () => void;
   isDark: boolean;
   isMobile: boolean;
@@ -16,6 +17,8 @@ export function TopNav({
   communityName,
   memberCount,
   syncedAgo = "2m ago",
+  syncing = false,
+  onSync,
   onThemeToggle,
   isDark,
   isMobile,
@@ -50,10 +53,15 @@ export function TopNav({
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Sync status */}
-      <span className="text-[10px] text-text-muted hidden sm:inline">
-        Synced {syncedAgo}
-      </span>
+      {/* Sync status — clickable to trigger sync */}
+      <button
+        onClick={onSync}
+        disabled={syncing}
+        className="text-[10px] text-text-muted hidden sm:inline bg-transparent border-none cursor-pointer hover:text-text-secondary transition-colors disabled:cursor-wait"
+        title="Click to sync data from Whop"
+      >
+        {syncing ? "Syncing..." : `Synced ${syncedAgo}`}
+      </button>
 
       {/* Theme toggle */}
       <button
