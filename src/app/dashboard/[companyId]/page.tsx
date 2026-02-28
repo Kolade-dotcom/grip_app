@@ -31,7 +31,7 @@ export default function DashboardPage({
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Fetch community data
-  const { community, loading: communityLoading } = useCommunity(companyId);
+  const { community, loading: communityLoading, error: communityError, refetch: refetchCommunity } = useCommunity(companyId);
 
   // Fetch members with risk scores and search
   const {
@@ -118,6 +118,23 @@ export default function DashboardPage({
         className="max-w-app mx-auto animate-fade-in"
         style={{ padding: isMobile ? "16px 12px" : "20px 20px" }}
       >
+        {/* Error state — community failed to load */}
+        {communityError && !communityLoading && (
+          <div className="card-base rounded-card p-8 text-center text-text-muted mb-4">
+            <div className="text-3xl mb-3">⚠️</div>
+            <h3 className="font-heading text-lg font-bold text-text-primary mb-2">
+              Could not load community
+            </h3>
+            <p className="text-sm mb-4">{communityError}</p>
+            <button
+              onClick={refetchCommunity}
+              className="px-4 py-2 rounded-btn bg-accent text-white text-sm font-semibold cursor-pointer border-none hover:opacity-90"
+            >
+              Try Again
+            </button>
+          </div>
+        )}
+
         {activeTab === "dashboard" && (
           <>
             <StatsRow

@@ -36,6 +36,11 @@ export function useMembers({
   const [syncing, setSyncing] = useState(false);
 
   const fetchMembers = useCallback(async () => {
+    if (!communityId) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
