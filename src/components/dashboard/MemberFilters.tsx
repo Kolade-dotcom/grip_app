@@ -27,7 +27,7 @@ export function MemberFilters({ activeFilter, onFilterChange, counts }: MemberFi
   ];
 
   return (
-    <div className="flex gap-1 mb-3.5 flex-wrap">
+    <div className="flex gap-1 flex-wrap">
       {filters.map((f) => {
         const isActive = activeFilter === f.key;
         return (
