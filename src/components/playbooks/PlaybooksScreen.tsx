@@ -54,20 +54,20 @@ export function PlaybooksScreen({ communityId, planTier, isMobile }: PlaybooksSc
   return (
     <div className="animate-fade-in">
       <div
-        className="grid gap-2.5 mb-4"
+        className="grid gap-2.5 mb-5"
         style={{ gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)" }}
       >
-        <StatBlock label="Total Enrolled" value={String(totalEnrolled)} sub="All playbooks" />
-        <StatBlock label="Completed" value={String(totalCompleted)} sub="Finished sequences" />
-        <StatBlock label="Active Playbooks" value={String(activePlaybooks)} sub="Currently running" />
-        <StatBlock label="Playbooks Available" value={String(playbooks.length)} sub="System + custom" />
+        <StatBlock label="In Sequences" value={String(totalEnrolled)} sub={`${activePlaybooks} playbooks active`} accentColor="#6e56ff" />
+        <StatBlock label="Completed" value={String(totalCompleted)} sub="Finished sequences" accentColor="#2ed573" />
+        <StatBlock label="Active Playbooks" value={String(activePlaybooks)} sub="Currently running" accentColor="#b4a4ff" />
+        <StatBlock label="Available" value={String(playbooks.length)} sub="System + custom" />
       </div>
 
       <div
         className="grid gap-3"
         style={{ gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}
       >
-        {playbooks.map((pb) => (
+        {playbooks.map((pb, idx) => (
           <PlaybookCard
             key={pb.id}
             id={pb.id}
@@ -79,19 +79,25 @@ export function PlaybooksScreen({ communityId, planTier, isMobile }: PlaybooksSc
             totalCompletions={pb.total_completions}
             successfulOutcomes={pb.successful_outcomes}
             stepCount={Array.isArray(pb.steps) ? pb.steps.length : 0}
+            steps={Array.isArray(pb.steps) ? pb.steps as { step_number: number; type: string; subject?: string }[] : undefined}
+            idx={idx}
             onClick={setSelectedPlaybookId}
           />
         ))}
       </div>
 
       {!hasAccess && (
-        <div className="card-base rounded-card p-6 text-center mt-4 border border-accent/20">
-          <p className="text-sm text-text-secondary mb-2">
-            Upgrade to <strong>{getPlanLabel(getUpgradeTier(planTier) ?? "starter")}</strong> to activate automated playbooks.
-          </p>
-          <Button variant="primary" size="sm">
-            Upgrade Plan
-          </Button>
+        <div
+          className="rounded-card p-5 text-center mt-3 flex items-center justify-center gap-2 text-text-muted text-xs font-medium"
+          style={{ border: "1px dashed var(--border-hover, rgba(255,255,255,0.1))", opacity: 0.7 }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+          </svg>
+          <span>
+            Custom playbook builder + more playbooks —{" "}
+            <strong>Upgrade to {getPlanLabel(getUpgradeTier(planTier) ?? "starter")}</strong>
+          </span>
         </div>
       )}
     </div>

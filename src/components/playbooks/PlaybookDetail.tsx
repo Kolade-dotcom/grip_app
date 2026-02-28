@@ -5,6 +5,7 @@ import { StatBlock } from "@/components/ui/StatBlock";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { StepFunnel } from "./StepFunnel";
+import { timeAgo } from "@/lib/utils";
 
 type PlaybookDetailProps = {
   playbookId: string;
@@ -71,39 +72,48 @@ export function PlaybookDetail({ playbookId, onBack, isMobile }: PlaybookDetailP
 
   return (
     <div className="animate-fade-in">
-      <button
-        onClick={onBack}
-        className="flex items-center gap-1 text-xs text-text-muted hover:text-text-primary mb-3 bg-transparent border-none cursor-pointer font-body"
-      >
-        ← Back to Playbooks
-      </button>
-
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">{playbook.emoji}</span>
-          <h2 className="font-heading text-lg font-bold text-text-primary">
+      <div className="flex items-center gap-2.5 mb-5 flex-wrap">
+        <button
+          onClick={onBack}
+          className="card-base rounded-button p-1.5 cursor-pointer flex items-center justify-center border border-border hover:border-border-hover transition-all duration-150"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-secondary">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+        <span className="text-[22px]">{playbook.emoji}</span>
+        <div>
+          <h2 className="font-heading text-[17px] font-bold text-text-primary tracking-tight">
             {playbook.name}
           </h2>
+          <p className="text-xs text-text-secondary">
+            {playbook.total_enrollments} enrolled{playbook.description ? ` · ${playbook.description}` : ""}
+          </p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant={playbook.active ? "ghost" : "primary"}
-            size="sm"
-            onClick={toggleActive}
-          >
+        <div className="ml-auto flex gap-1.5 items-center">
+          {playbook.active ? (
+            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-pill bg-risk-low/10 text-risk-low">
+              Active
+            </span>
+          ) : (
+            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-pill bg-surface-input text-text-muted">
+              Paused
+            </span>
+          )}
+          <Button variant="default" size="xs" onClick={toggleActive}>
             {playbook.active ? "Pause" : "Resume"}
           </Button>
         </div>
       </div>
 
       <div
-        className="grid gap-2.5 mb-4"
+        className="grid gap-2.5 mb-5"
         style={{ gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)" }}
       >
-        <StatBlock label="Enrolled" value={String(playbook.total_enrollments)} sub="All time" />
+        <StatBlock label="Enrolled" value={String(playbook.total_enrollments)} sub="All time" accentColor="#6e56ff" />
         <StatBlock label="Active" value={String(activeEnrollments)} sub="In progress" />
-        <StatBlock label="Completed" value={String(playbook.total_completions)} sub="Finished" />
-        <StatBlock label="Success Rate" value={successRate} sub="Positive outcomes" />
+        <StatBlock label="Completed" value={String(playbook.total_completions)} sub="Finished" accentColor="#2ed573" />
+        <StatBlock label="Success Rate" value={successRate} sub="Positive outcomes" accentColor="#2ed573" />
       </div>
 
       <div
@@ -111,7 +121,7 @@ export function PlaybookDetail({ playbookId, onBack, isMobile }: PlaybookDetailP
         style={{ gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}
       >
         <Card>
-          <h3 className="font-heading text-sm font-bold text-text-primary mb-3">
+          <h3 className="font-heading text-[13px] font-bold text-text-primary mb-4">
             Step Funnel
           </h3>
           <StepFunnel
@@ -122,31 +132,27 @@ export function PlaybookDetail({ playbookId, onBack, isMobile }: PlaybookDetailP
         </Card>
 
         <Card>
-          <h3 className="font-heading text-sm font-bold text-text-primary mb-3">
+          <h3 className="font-heading text-[13px] font-bold text-text-primary mb-3.5">
             Recent Activity
           </h3>
           {playbook.enrollments.length === 0 ? (
             <p className="text-xs text-text-muted">No enrollments yet.</p>
           ) : (
-            <div className="flex flex-col gap-2">
-              {playbook.enrollments.slice(0, 10).map((enrollment) => (
+            <div className="flex flex-col">
+              {playbook.enrollments.slice(0, 10).map((enrollment, i) => (
                 <div
                   key={enrollment.id}
-                  className="flex items-center justify-between py-1.5 border-b border-border last:border-b-0"
+                  className="flex items-center gap-2.5 py-2"
+                  style={{ borderBottom: i < Math.min(playbook.enrollments.length, 10) - 1 ? "1px solid var(--border)" : "none" }}
                 >
-                  <span className="text-xs text-text-secondary">
+                  <span className="text-sm">
+                    {enrollment.status === "active" ? "🔄" : enrollment.status === "completed" ? "✅" : "⏸️"}
+                  </span>
+                  <span className="flex-1 text-xs text-text-secondary">
                     Member enrolled
                   </span>
-                  <span
-                    className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-pill ${
-                      enrollment.status === "active"
-                        ? "bg-accent/10 text-accent"
-                        : enrollment.status === "completed"
-                          ? "bg-risk-low/10 text-risk-low"
-                          : "bg-surface-input text-text-muted"
-                    }`}
-                  >
-                    {enrollment.status}
+                  <span className="text-[10px] text-text-muted whitespace-nowrap">
+                    {timeAgo(enrollment.enrolled_at)}
                   </span>
                 </div>
               ))}
