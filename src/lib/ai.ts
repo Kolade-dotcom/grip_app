@@ -1,20 +1,20 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-let client: Anthropic | null = null;
+let client: GoogleGenerativeAI | null = null;
 
-export function getAnthropicClient(): Anthropic {
+export function getAIClient(): GoogleGenerativeAI {
   if (!client) {
-    const key = process.env.ANTHROPIC_API_KEY;
+    const key = process.env.GEMINI_API_KEY;
     if (!key) {
-      throw new Error("Missing ANTHROPIC_API_KEY environment variable");
+      throw new Error("Missing GEMINI_API_KEY environment variable");
     }
-    client = new Anthropic({ apiKey: key });
+    client = new GoogleGenerativeAI(key);
   }
   return client;
 }
 
 /**
- * Personalize an outreach message using Claude.
+ * Personalize an outreach message using Gemini.
  * Used in Growth+ tier playbooks.
  */
 export async function personalizeMessage(
@@ -26,15 +26,10 @@ export async function personalizeMessage(
     tenure: number;
   }
 ): Promise<string> {
-  const ai = getAnthropicClient();
+  const ai = getAIClient();
+  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-  const response = await ai.messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 512,
-    messages: [
-      {
-        role: "user",
-        content: `You are a retention specialist. Personalize this outreach template for a community member.
+  const prompt = `You are a retention specialist. Personalize this outreach template for a community member.
 
 Template: ${template}
 
@@ -44,14 +39,11 @@ Member context:
 - Risk factors: ${context.riskFactors.join(", ")}
 - Member for: ${context.tenure} days
 
-Rewrite the template to be warm, personal, and address their specific situation. Keep it concise (2-3 short paragraphs max). Do not use placeholder brackets. Return only the personalized message text.`,
-      },
-    ],
-  });
+Rewrite the template to be warm, personal, and address their specific situation. Keep it concise (2-3 short paragraphs max). Do not use placeholder brackets. Return only the personalized message text.`;
 
-  const block = response.content[0];
-  if (block.type === "text") {
-    return block.text;
-  }
-  return template;
+  const result = await model.generateContent(prompt);
+  const response = result.response;
+  const text = response.text();
+
+  return text || template;
 }
