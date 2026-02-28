@@ -11,7 +11,7 @@ export function Card({ children, hover, className, style, ...props }: CardProps)
   return (
     <div
       className={cn(
-        "card-base overflow-hidden shadow-[var(--shadow)] transition-all duration-200",
+        "card-base overflow-hidden shadow-[var(--shadow)] transition-all duration-200 px-5 py-[18px]",
         hover && "card-hover cursor-pointer",
         className
       )}

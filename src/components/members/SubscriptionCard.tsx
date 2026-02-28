@@ -40,7 +40,7 @@ export function SubscriptionCard({ member }: SubscriptionCardProps) {
   ];
 
   return (
-    <Card className="p-[18px_20px]">
+    <Card>
       <div className="text-label font-bold mb-3.5 flex items-center gap-1.5">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-accent">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />

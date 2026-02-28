@@ -44,7 +44,7 @@ export function EngagementCard({ activity, hasEngagementData }: EngagementCardPr
     .sort((a, b) => new Date(b.last_seen_at!).getTime() - new Date(a.last_seen_at!).getTime())[0];
 
   return (
-    <Card className="p-[18px_20px]">
+    <Card>
       <div className="text-label font-bold mb-3.5 flex items-center gap-1.5">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-accent">
           <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />

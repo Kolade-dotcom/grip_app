@@ -30,7 +30,7 @@ export function PlaybookHistoryCard({ enrollments, outreach }: PlaybookHistoryCa
   const activeEnrollment = enrollments.find((e) => e.status === "active");
 
   return (
-    <Card className="p-[18px_20px]">
+    <Card>
       <div className="text-label font-bold mb-3.5 flex items-center gap-1.5">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-accent">
           <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />

@@ -96,7 +96,7 @@ export default function DashboardPage({
   const loading = communityLoading || membersLoading;
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-surface-bg transition-colors duration-300">
+    <div ref={containerRef} className="min-h-screen bg-surface-bg transition-colors duration-300 max-w-full overflow-hidden">
       {/* Top Navigation */}
       <div className="sticky top-0 z-50 bg-surface-raised border-b border-border">
         <TopNav
