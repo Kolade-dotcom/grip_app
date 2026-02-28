@@ -14,6 +14,7 @@ type SettingsScreenProps = {
   isDark: boolean;
   onThemeToggle: () => void;
   onCommunityUpdate: () => void;
+  onManagePlan: () => void;
 };
 
 const CHANNELS = [
@@ -42,6 +43,7 @@ export function SettingsScreen({
   isDark,
   onThemeToggle,
   onCommunityUpdate,
+  onManagePlan,
 }: SettingsScreenProps) {
   const [saving, setSaving] = useState(false);
   const tier = (community?.plan_tier ?? "free") as PlanTier;
@@ -212,11 +214,11 @@ export function SettingsScreen({
           </p>
           <div className="flex gap-2">
             {nextTier && (
-              <Button variant="primary" size="sm">
+              <Button variant="primary" size="sm" onClick={onManagePlan}>
                 Upgrade to {getPlanLabel(nextTier)} (${getPlanPrice(nextTier)})
               </Button>
             )}
-            <Button variant="ghost" size="sm">Manage Billing</Button>
+            <Button variant="ghost" size="sm" onClick={onManagePlan}>Manage Billing</Button>
           </div>
         </Card>
       </div>

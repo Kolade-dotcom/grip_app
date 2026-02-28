@@ -9,7 +9,10 @@ interface StatBlockProps {
 
 export function StatBlock({ label, value, sub, accentColor }: StatBlockProps) {
   return (
-    <div className="card-base px-[18px] py-4 flex-1 min-w-0">
+    <div
+      className="card-base px-[18px] py-4 flex-1 min-w-0 transition-all duration-200 hover:scale-[1.01]"
+      style={accentColor ? { borderLeft: `2px solid ${accentColor}40` } : undefined}
+    >
       <div className="text-label mb-2">{label}</div>
       <div
         className="stat-number text-2xl leading-none"

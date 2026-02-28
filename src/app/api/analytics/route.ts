@@ -85,6 +85,31 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    let riskTrend: unknown[] = [];
+    if (isDetailed) {
+      const period = parseInt(request.nextUrl.searchParams.get("period") ?? "30", 10);
+      try {
+        const sinceDate = new Date();
+        sinceDate.setDate(sinceDate.getDate() - period);
+        const { data: snapshots } = await supabase
+          .from("risk_score_snapshots")
+          .select("snapshot_date, critical_count, high_count, medium_count, low_count")
+          .eq("community_id", communityId)
+          .gte("snapshot_date", sinceDate.toISOString().split("T")[0])
+          .order("snapshot_date", { ascending: true });
+
+        riskTrend = (snapshots ?? []).map((s) => ({
+          date: s.snapshot_date,
+          critical: s.critical_count,
+          high: s.high_count,
+          medium: s.medium_count,
+          low: s.low_count,
+        }));
+      } catch {
+        riskTrend = [];
+      }
+    }
+
     return NextResponse.json({
       in_playbooks: inPlaybooks ?? 0,
       playbooks_running: playbooksRunning ?? 0,
@@ -93,6 +118,7 @@ export async function GET(request: NextRequest) {
         risk_distribution: riskDistribution,
         total_members: totalMembers,
         emails_sent: emailsSent,
+        risk_trend: riskTrend,
       }),
     });
   } catch {

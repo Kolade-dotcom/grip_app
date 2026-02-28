@@ -50,7 +50,7 @@ export function MemberList({ members, onMemberClick, isMobile }: MemberListProps
             key={m.id}
             onClick={() => onMemberClick(m.id)}
             className={cn(
-              "card-base rounded-[10px] cursor-pointer transition-all duration-150 mb-0.5 hover:bg-surface-card-hover",
+              "card-base rounded-[10px] cursor-pointer transition-all duration-150 mb-0.5 hover:bg-surface-card-hover hover:translate-x-[2px]",
             )}
             style={{
               display: isMobile ? "flex" : "grid",
@@ -58,6 +58,7 @@ export function MemberList({ members, onMemberClick, isMobile }: MemberListProps
               flexDirection: isMobile ? "column" : undefined,
               gap: isMobile ? 8 : 12,
               alignItems: isMobile ? "stretch" : "center",
+              borderLeft: `2px solid ${color}40`,
               padding: isMobile ? "12px 14px" : "11px 16px",
               animation: `fadeSlideIn 0.3s ease ${idx * 0.03}s both`,
             }}

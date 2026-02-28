@@ -10,12 +10,23 @@ type RiskDistribution = {
   total: number;
 };
 
+type RiskTrendPoint = {
+  date: string;
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+};
+
 type AnalyticsData = {
   riskDistribution: RiskDistribution;
   totalMembers: number;
   retentionRate: string;
   emailsSent: number;
   outreachResponseRate: string;
+  riskTrend: RiskTrendPoint[];
+  period: 7 | 30 | 90;
+  setPeriod: (p: 7 | 30 | 90) => void;
   loading: boolean;
   error: string | null;
   refetch: () => void;
@@ -31,6 +42,8 @@ export function useAnalytics(communityId: string): AnalyticsData {
   });
   const [totalMembers, setTotalMembers] = useState(0);
   const [emailsSent, setEmailsSent] = useState(0);
+  const [riskTrend, setRiskTrend] = useState<RiskTrendPoint[]>([]);
+  const [period, setPeriod] = useState<7 | 30 | 90>(30);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,7 +57,7 @@ export function useAnalytics(communityId: string): AnalyticsData {
 
     try {
       const res = await fetch(
-        `/api/analytics?community_id=${communityId}&detailed=true`
+        `/api/analytics?community_id=${communityId}&detailed=true&period=${period}`
       );
       if (!res.ok) throw new Error(`Failed to fetch analytics: ${res.status}`);
       const data = await res.json();
@@ -54,12 +67,13 @@ export function useAnalytics(communityId: string): AnalyticsData {
       );
       setTotalMembers(data.total_members ?? 0);
       setEmailsSent(data.emails_sent ?? 0);
+      setRiskTrend(data.risk_trend ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch analytics");
     } finally {
       setLoading(false);
     }
-  }, [communityId]);
+  }, [communityId, period]);
 
   useEffect(() => {
     fetchAnalytics();
@@ -76,6 +90,9 @@ export function useAnalytics(communityId: string): AnalyticsData {
     retentionRate,
     emailsSent,
     outreachResponseRate,
+    riskTrend,
+    period,
+    setPeriod,
     loading,
     error,
     refetch: fetchAnalytics,

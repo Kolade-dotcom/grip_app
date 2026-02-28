@@ -16,6 +16,7 @@ import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { AnalyticsScreen } from "@/components/dashboard/AnalyticsScreen";
 import { SettingsScreen } from "@/components/dashboard/SettingsScreen";
 import { PlaybooksScreen } from "@/components/playbooks/PlaybooksScreen";
+import { PricingScreen } from "@/components/pricing/PricingScreen";
 import type { PlanTier } from "@/lib/plan-limits";
 import { formatCurrencyShort } from "@/lib/utils";
 
@@ -32,6 +33,7 @@ export default function DashboardPage({
   const [search, setSearch] = useState("");
   const [isDark, setIsDark] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [showPricing, setShowPricing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Fetch community data
@@ -96,7 +98,7 @@ export default function DashboardPage({
   const loading = communityLoading || membersLoading;
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-surface-bg transition-colors duration-300 max-w-full overflow-hidden">
+    <div ref={containerRef} className="min-h-screen bg-surface-bg transition-colors duration-300 max-w-full overflow-hidden" style={{ backgroundImage: "var(--surface-bg-gradient)" }}>
       {/* Top Navigation */}
       <div className="sticky top-0 z-50 bg-surface-raised border-b border-border">
         <TopNav
@@ -111,7 +113,7 @@ export default function DashboardPage({
         />
         <TabBar
           activeTab={activeTab}
-          onTabChange={setActiveTab}
+          onTabChange={(tab) => { setActiveTab(tab); setShowPricing(false); }}
           criticalCount={counts.critical + counts.high}
           isMobile={isMobile}
         />
@@ -217,17 +219,28 @@ export default function DashboardPage({
           <AnalyticsScreen
             communityId={community?.id ?? ""}
             isMobile={isMobile}
+            isDark={isDark}
           />
         )}
 
         {activeTab === "settings" && (
-          <SettingsScreen
-            community={community}
-            isMobile={isMobile}
-            isDark={isDark}
-            onThemeToggle={toggleTheme}
-            onCommunityUpdate={refetchCommunity}
-          />
+          showPricing ? (
+            <PricingScreen
+              currentTier={(community?.plan_tier ?? "free") as PlanTier}
+              isMobile={isMobile}
+              isDark={isDark}
+              onBack={() => setShowPricing(false)}
+            />
+          ) : (
+            <SettingsScreen
+              community={community}
+              isMobile={isMobile}
+              isDark={isDark}
+              onThemeToggle={toggleTheme}
+              onCommunityUpdate={refetchCommunity}
+              onManagePlan={() => setShowPricing(true)}
+            />
+          )
         )}
       </div>
 
