@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     let creatorUserId = "";
 
     try {
-      const company = await whopApi.companies.retrieveCompany(whopCompanyId);
+      const company = await whopApi.companies.retrieve(whopCompanyId);
       companyName = company.title ?? companyName;
       creatorUserId = company.owner_user?.id ?? "";
     } catch (whopError) {
