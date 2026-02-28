@@ -13,6 +13,10 @@ import { MemberList } from "@/components/dashboard/MemberList";
 import { useMembers } from "@/hooks/useMembers";
 import { useCommunity } from "@/hooks/useCommunity";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
+import { AnalyticsScreen } from "@/components/dashboard/AnalyticsScreen";
+import { SettingsScreen } from "@/components/dashboard/SettingsScreen";
+import { PlaybooksScreen } from "@/components/playbooks/PlaybooksScreen";
+import type { PlanTier } from "@/lib/plan-limits";
 import { formatCurrencyShort } from "@/lib/utils";
 
 export default function DashboardPage({
@@ -202,27 +206,28 @@ export default function DashboardPage({
         )}
 
         {activeTab === "playbooks" && (
-          <div className="card-base rounded-card p-8 text-center text-text-muted">
-            <div className="text-3xl mb-3">⚡</div>
-            <h3 className="font-heading text-lg font-bold text-text-primary mb-2">Playbooks</h3>
-            <p className="text-sm">Automated retention workflows — coming in Phase 9.</p>
-          </div>
+          <PlaybooksScreen
+            communityId={community?.id ?? ""}
+            planTier={(community?.plan_tier ?? "free") as PlanTier}
+            isMobile={isMobile}
+          />
         )}
 
         {activeTab === "analytics" && (
-          <div className="card-base rounded-card p-8 text-center text-text-muted">
-            <div className="text-3xl mb-3">📊</div>
-            <h3 className="font-heading text-lg font-bold text-text-primary mb-2">Analytics</h3>
-            <p className="text-sm">Risk distribution and impact metrics — coming in Phase 8.</p>
-          </div>
+          <AnalyticsScreen
+            communityId={community?.id ?? ""}
+            isMobile={isMobile}
+          />
         )}
 
         {activeTab === "settings" && (
-          <div className="card-base rounded-card p-8 text-center text-text-muted">
-            <div className="text-3xl mb-3">⚙️</div>
-            <h3 className="font-heading text-lg font-bold text-text-primary mb-2">Settings</h3>
-            <p className="text-sm">Integrations and preferences — coming in Phase 7.</p>
-          </div>
+          <SettingsScreen
+            community={community}
+            isMobile={isMobile}
+            isDark={isDark}
+            onThemeToggle={toggleTheme}
+            onCommunityUpdate={refetchCommunity}
+          />
         )}
       </div>
 

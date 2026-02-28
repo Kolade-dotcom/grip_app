@@ -103,3 +103,45 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+    const { community_id, settings } = body;
+
+    if (!community_id) {
+      return NextResponse.json(
+        { error: "community_id is required" },
+        { status: 400 }
+      );
+    }
+
+    const supabase = createServerClient();
+
+    const updateData: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+    if (settings !== undefined) updateData.settings = settings;
+
+    const { data, error } = await supabase
+      .from("communities")
+      .update(updateData)
+      .eq("id", community_id)
+      .select("*")
+      .single();
+
+    if (error || !data) {
+      return NextResponse.json(
+        { error: "Failed to update community" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(data);
+  } catch {
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}

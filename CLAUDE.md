@@ -15,876 +15,199 @@ Grip is a Whop-native app that detects at-risk community members and executes au
 ```
 Framework:      Next.js 15 (App Router) + TypeScript + React 19
 Whop SDK:       @whop/react + @whop/sdk (iFrame integration, auth, API access)
-Styling:        Tailwind CSS + custom design system (see Design Reference below)
+Styling:        Tailwind CSS + custom design system
 Charts:         Recharts
 Database:       PostgreSQL via Supabase (@supabase/supabase-js)
 Cache:          Redis via Upstash (@upstash/redis)
-Jobs:           Inngest (background job scheduling — risk recalc, playbook steps, data sync)
+Jobs:           Inngest (background job scheduling)
 Email:          Resend (sending + open/click tracking)
 AI:             Anthropic Claude API (playbook message personalization)
-Testing:        Vitest + @testing-library/react (TDD — see Testing section below)
+Testing:        Vitest + @testing-library/react (TDD)
 Hosting:        Vercel
 Fonts:          Outfit (headings/numbers), Plus Jakarta Sans (body)
 ```
 
 ---
 
-## Project Structure
+## Key Architecture Decisions
 
-```
-grip/
-├── CLAUDE.md                          # This file
-├── package.json
-├── next.config.ts
-├── tailwind.config.ts
-├── tsconfig.json
-├── .env.local                         # See Environment Variables section
-│
-├── supabase/
-│   └── migrations/
-│       └── 001_initial_schema.sql     # Database schema (see below)
-│
-├── design-reference/
-│   └── grip-prototype.tsx             # UI-only design mockup (VISUAL TARGET — see below)
-│
-├── src/
-│   ├── app/
-│   │   ├── layout.tsx                 # Root layout with fonts, Whop SDK provider
-│   │   ├── page.tsx                   # Main app shell (iFrame entry point)
-│   │   │
-│   │   ├── api/
-│   │   │   ├── whop/
-│   │   │   │   └── webhook/
-│   │   │   │       └── route.ts       # Whop webhook handler (membership changes, payments)
-│   │   │   ├── members/
-│   │   │   │   ├── route.ts           # GET: list members with risk scores + filters
-│   │   │   │   ├── [id]/
-│   │   │   │   │   └── route.ts       # GET: member detail, PUT: update
-│   │   │   │   └── sync/
-│   │   │   │       └── route.ts       # POST: trigger manual Whop data sync
-│   │   │   ├── risk/
-│   │   │   │   └── recalculate/
-│   │   │   │       └── route.ts       # POST: trigger risk score recalculation
-│   │   │   ├── playbooks/
-│   │   │   │   ├── route.ts           # GET: list playbooks, POST: create
-│   │   │   │   ├── [id]/
-│   │   │   │   │   ├── route.ts       # GET/PUT/DELETE playbook
-│   │   │   │   │   └── enroll/
-│   │   │   │   │       └── route.ts   # POST: enroll member in playbook
-│   │   │   │   └── execute/
-│   │   │   │       └── route.ts       # POST: execute pending playbook steps
-│   │   │   ├── outreach/
-│   │   │   │   ├── route.ts           # POST: send email/message to member
-│   │   │   │   └── templates/
-│   │   │   │       └── route.ts       # GET: email templates
-│   │   │   ├── analytics/
-│   │   │   │   └── route.ts           # GET: dashboard analytics data
-│   │   │   └── inngest/
-│   │   │       └── route.ts           # Inngest function handler
-│   │   │
-│   │   └── (screens)/                 # App screens (rendered in iFrame)
-│   │       ├── dashboard/
-│   │       │   └── page.tsx
-│   │       ├── members/
-│   │       │   └── [id]/
-│   │       │       └── page.tsx
-│   │       ├── playbooks/
-│   │       │   ├── page.tsx
-│   │       │   └── [id]/
-│   │       │       └── page.tsx
-│   │       ├── analytics/
-│   │       │   └── page.tsx
-│   │       └── settings/
-│   │           └── page.tsx
-│   │
-│   ├── components/
-│   │   ├── ui/                        # Reusable UI primitives
-│   │   │   ├── Button.tsx
-│   │   │   ├── Card.tsx
-│   │   │   ├── StatBlock.tsx
-│   │   │   ├── RiskPill.tsx
-│   │   │   ├── ProgressBar.tsx
-│   │   │   ├── Toggle.tsx
-│   │   │   ├── Pill.tsx
-│   │   │   └── EngagementChart.tsx
-│   │   ├── layout/
-│   │   │   ├── TopNav.tsx             # Sticky top nav (logo, community picker, theme toggle)
-│   │   │   ├── TabBar.tsx             # Dashboard/Playbooks/Analytics/Settings tabs
-│   │   │   └── Footer.tsx
-│   │   ├── dashboard/
-│   │   │   ├── StatsRow.tsx           # Revenue at risk, critical count, etc.
-│   │   │   ├── DataSourcesBar.tsx     # Whop API ✓, Discord ✓, Telegram ✗
-│   │   │   ├── MemberFilters.tsx      # All / Critical / High / Medium / Low
-│   │   │   └── MemberList.tsx         # Sortable member rows
-│   │   ├── members/
-│   │   │   ├── MemberDetail.tsx       # Full member profile
-│   │   │   ├── SubscriptionCard.tsx
-│   │   │   ├── RiskFactorsCard.tsx
-│   │   │   ├── EngagementCard.tsx
-│   │   │   └── PlaybookHistoryCard.tsx
-│   │   ├── playbooks/
-│   │   │   ├── PlaybookCard.tsx       # Playbook summary with funnel bars
-│   │   │   ├── PlaybookDetail.tsx     # Step funnel + activity log
-│   │   │   └── StepFunnel.tsx
-│   │   ├── UpgradePrompt.tsx          # Shown when free tier user tries gated action
-│   │   └── GripLogo.tsx
-│   │
-│   ├── lib/
-│   │   ├── whop.ts                    # Whop SDK client initialization
-│   │   ├── supabase.ts                # Supabase client (server + client)
-│   │   ├── redis.ts                   # Upstash Redis client
-│   │   ├── resend.ts                  # Resend email client
-│   │   ├── ai.ts                      # Claude API client for personalization
-│   │   ├── risk-scoring.ts            # Risk score calculation engine
-│   │   ├── playbook-engine.ts         # Playbook step execution logic
-│   │   ├── outreach.ts                # Channel-agnostic message sending
-│   │   ├── plan-limits.ts             # Tier definitions and feature gating
-│   │   ├── sync.ts                    # Whop data sync logic
-│   │   └── utils.ts                   # Formatting, date helpers
-│   │
-│   ├── inngest/
-│   │   ├── client.ts                  # Inngest client
-│   │   └── functions/
-│   │       ├── recalculate-risk.ts    # Cron: every 6 hours
-│   │       ├── execute-playbook-steps.ts  # Cron: every 15 minutes
-│   │       ├── sync-whop-data.ts      # Cron: every 4 hours
-│   │       └── daily-digest.ts        # Cron: 8am creator timezone
-│   │
-│   ├── hooks/
-│   │   ├── useMembers.ts
-│   │   ├── usePlaybooks.ts
-│   │   ├── useAnalytics.ts
-│   │   └── useTheme.ts
-│   │
-│   └── types/
-│       ├── member.ts
-│       ├── playbook.ts
-│       ├── risk.ts
-│       └── community.ts
-```
-
----
-
-## Environment Variables
-
-```env
-# Whop
-WHOP_API_KEY=
-WHOP_APP_ID=
-WHOP_CLIENT_ID=
-WHOP_CLIENT_SECRET=
-WHOP_WEBHOOK_SECRET=
-
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-
-# Upstash Redis
-UPSTASH_REDIS_REST_URL=
-UPSTASH_REDIS_REST_TOKEN=
-
-# Resend
-RESEND_API_KEY=
-
-# Anthropic (for AI personalization — Growth+ tier)
-ANTHROPIC_API_KEY=
-
-# Inngest
-INNGEST_EVENT_KEY=
-INNGEST_SIGNING_KEY=
-
-# App
-NEXT_PUBLIC_APP_URL=
-```
+- **No sidebar** — renders in Whop's iFrame which has its own sidebar. Use sticky top nav + tab bar.
+- **Whop handles auth** — user/company context comes from SDK, not custom auth.
+- **Email-first outreach** — Whop provides emails. Priority: email → whop_chat → discord_dm → telegram.
+- **Free tier = read-only** — show `<UpgradePrompt>` when free users try any action.
+- **Risk scores cached** — recalculated every 6h via Inngest, read from `risk_scores` table.
+- **Dark mode default** — persisted in community settings JSONB.
+- **Mobile breakpoint: 640px** — grid columns collapse, checked via `isMobile`.
+- **All metrics from real data** — never hardcode fake numbers. Show "—" if no data.
 
 ---
 
 ## Database Schema
 
-**IMPORTANT:** The `plan_tier` column includes all 5 tiers: free, starter, growth, pro, enterprise.
+Full schema in `supabase/migrations/001_initial_schema.sql`. Key tables:
 
-```sql
--- Communities (Whop companies that installed our app)
-CREATE TABLE communities (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  whop_company_id VARCHAR NOT NULL UNIQUE,
-  creator_user_id VARCHAR NOT NULL,
-  name VARCHAR NOT NULL,
-  
-  -- Optional integrations
-  discord_guild_id VARCHAR,
-  discord_bot_installed BOOLEAN DEFAULT false,
-  telegram_bot_installed BOOLEAN DEFAULT false,
-  whop_chat_enabled BOOLEAN DEFAULT false,
-  
-  -- Plan & billing
-  plan_tier VARCHAR DEFAULT 'free' CHECK (plan_tier IN ('free', 'starter', 'growth', 'pro', 'enterprise')),
-  member_count INT DEFAULT 0,
-  
-  -- Settings
-  settings JSONB DEFAULT '{
-    "outreach_channel_priority": ["email", "whop_chat", "discord", "telegram"],
-    "auto_enroll_playbooks": true,
-    "daily_digest_email": true,
-    "dark_mode": true
-  }'::jsonb,
-  
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-
--- Members (synced from Whop API)
-CREATE TABLE members (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  community_id UUID REFERENCES communities(id) ON DELETE CASCADE,
-  
-  -- Whop data (Layer 1 — always available)
-  whop_membership_id VARCHAR NOT NULL,
-  whop_user_id VARCHAR NOT NULL,
-  email VARCHAR,
-  username VARCHAR,
-  first_name VARCHAR,
-  subscription_status VARCHAR NOT NULL, -- active, cancelled, past_due, trialing
-  plan_id VARCHAR,
-  plan_name VARCHAR,
-  plan_price_cents INT,
-  current_period_start TIMESTAMP,
-  current_period_end TIMESTAMP,
-  cancel_at_period_end BOOLEAN DEFAULT false,
-  ltv_cents INT DEFAULT 0,
-  tenure_days INT,
-  previous_cancellations INT DEFAULT 0,
-  recent_payment_failures INT DEFAULT 0,
-  
-  -- Optional platform IDs (Layer 2/3/4)
-  discord_user_id VARCHAR,
-  telegram_user_id VARCHAR,
-  
-  -- Computed
-  has_engagement_data BOOLEAN DEFAULT false,
-  
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  UNIQUE(community_id, whop_membership_id)
-);
-
-CREATE INDEX idx_members_community ON members(community_id);
-CREATE INDEX idx_members_status ON members(subscription_status);
-
--- Engagement activity (optional — from Discord/Whop Chat/Telegram)
-CREATE TABLE member_activity (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  member_id UUID REFERENCES members(id) ON DELETE CASCADE,
-  source VARCHAR NOT NULL CHECK (source IN ('whop_chat', 'discord', 'telegram')),
-  date DATE NOT NULL,
-  messages_sent INT DEFAULT 0,
-  reactions_given INT DEFAULT 0,
-  channels_visited INT DEFAULT 0,
-  voice_minutes INT DEFAULT 0,
-  last_seen_at TIMESTAMP,
-  engagement_score INT DEFAULT 0,
-  created_at TIMESTAMP DEFAULT NOW(),
-  UNIQUE(member_id, source, date)
-);
-
-CREATE INDEX idx_activity_member_date ON member_activity(member_id, date DESC);
-
--- Risk scores (recalculated every 6 hours, one per member)
-CREATE TABLE risk_scores (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  member_id UUID REFERENCES members(id) ON DELETE CASCADE UNIQUE,
-  score INT NOT NULL CHECK (score >= 0 AND score <= 100),
-  risk_level VARCHAR NOT NULL CHECK (risk_level IN ('low', 'medium', 'high', 'critical')),
-  risk_factors JSONB DEFAULT '[]'::jsonb,
-  data_confidence VARCHAR DEFAULT 'medium' CHECK (data_confidence IN ('low', 'medium', 'high')),
-  calculated_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE INDEX idx_risk_level ON risk_scores(risk_level, score DESC);
-
--- Outreach log
-CREATE TABLE outreach_log (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  member_id UUID REFERENCES members(id) ON DELETE CASCADE,
-  community_id UUID REFERENCES communities(id),
-  channel VARCHAR NOT NULL CHECK (channel IN ('email', 'whop_chat', 'discord_dm', 'telegram', 'manual')),
-  template_id VARCHAR,
-  playbook_enrollment_id UUID,
-  subject VARCHAR,
-  content TEXT NOT NULL,
-  
-  sent_at TIMESTAMP DEFAULT NOW(),
-  delivered_at TIMESTAMP,
-  opened_at TIMESTAMP,
-  clicked_at TIMESTAMP,
-  responded_at TIMESTAMP,
-  bounced BOOLEAN DEFAULT false,
-  outcome VARCHAR,
-  
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE INDEX idx_outreach_member ON outreach_log(member_id, sent_at DESC);
-
--- Playbook definitions
-CREATE TABLE playbooks (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  community_id UUID REFERENCES communities(id),
-  name VARCHAR NOT NULL,
-  emoji VARCHAR DEFAULT '🔄',
-  description TEXT,
-  playbook_type VARCHAR NOT NULL CHECK (playbook_type IN ('system', 'custom')),
-  trigger_conditions JSONB NOT NULL,
-  steps JSONB NOT NULL,
-  active BOOLEAN DEFAULT true,
-  min_tier VARCHAR DEFAULT 'growth', -- minimum plan tier required
-  
-  total_enrollments INT DEFAULT 0,
-  total_completions INT DEFAULT 0,
-  successful_outcomes INT DEFAULT 0,
-  
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
--- Playbook enrollments
-CREATE TABLE playbook_enrollments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  playbook_id UUID REFERENCES playbooks(id),
-  member_id UUID REFERENCES members(id),
-  current_step INT DEFAULT 0,
-  status VARCHAR DEFAULT 'active' CHECK (status IN ('active', 'completed', 'stopped', 'failed')),
-  enrolled_at TIMESTAMP DEFAULT NOW(),
-  completed_at TIMESTAMP,
-  outcome VARCHAR,
-  UNIQUE(playbook_id, member_id)
-);
-
-CREATE INDEX idx_enrollments_active ON playbook_enrollments(status) WHERE status = 'active';
-
--- Playbook step executions
-CREATE TABLE playbook_step_executions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  enrollment_id UUID REFERENCES playbook_enrollments(id),
-  step_number INT NOT NULL,
-  step_type VARCHAR NOT NULL,
-  channel VARCHAR,
-  scheduled_for TIMESTAMP NOT NULL,
-  executed_at TIMESTAMP,
-  content TEXT,
-  outcome JSONB,
-  error TEXT,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE INDEX idx_steps_pending ON playbook_step_executions(scheduled_for) 
-  WHERE executed_at IS NULL;
-
--- Event log
-CREATE TABLE events (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  community_id UUID REFERENCES communities(id),
-  member_id UUID REFERENCES members(id),
-  event_type VARCHAR NOT NULL,
-  event_data JSONB,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE INDEX idx_events_community ON events(community_id, created_at DESC);
-```
+| Table | Purpose |
+|-------|---------|
+| `communities` | Whop companies, integrations, plan_tier (free/starter/growth/pro/enterprise), settings JSONB |
+| `members` | Synced from Whop API — subscription data, billing, platform IDs |
+| `member_activity` | Engagement from Discord/Whop Chat/Telegram per date |
+| `risk_scores` | One per member (UNIQUE), score 0-100, level, factors JSONB, confidence |
+| `outreach_log` | All messages sent with delivery/open/click/respond tracking |
+| `playbooks` | System + custom definitions, trigger conditions, steps JSONB |
+| `playbook_enrollments` | Member-to-playbook junction, status tracking |
+| `playbook_step_executions` | Scheduled step runs, indexed for pending queries |
+| `events` | Audit log of webhook events |
 
 ---
 
-## Pricing Tiers & Feature Gates
+## Pricing Tiers
 
-```typescript
-// src/lib/plan-limits.ts
+5 tiers defined in `src/lib/plan-limits.ts`. Use `canAccess(tier, feature)` for gating.
 
-export const PLAN_LIMITS = {
-  free: {
-    maxMembers: 50,
-    playbooks: 0,           // Read-only dashboard. No outreach at all.
-    manualEmails: 0,
-    automatedOutreach: false,
-    discordIntegration: false,
-    telegramIntegration: false,
-    aiPersonalization: false,
-    abTesting: false,
-    price: 0,
-    label: 'Free',
-  },
-  starter: {
-    maxMembers: 500,
-    playbooks: 1,           // New Member Fast Start only
-    manualEmails: Infinity,
-    automatedOutreach: false, // Manual send only — no auto-sequences
-    discordIntegration: true,
-    telegramIntegration: false,
-    aiPersonalization: false,
-    abTesting: false,
-    price: 49,
-    label: 'Starter',
-  },
-  growth: {
-    maxMembers: 2000,
-    playbooks: 3,           // Silent Revival + Fast Start + Renewal Risk
-    manualEmails: Infinity,
-    automatedOutreach: true,
-    discordIntegration: true,
-    telegramIntegration: true,
-    aiPersonalization: true,
-    abTesting: true,
-    price: 149,
-    label: 'Growth',
-  },
-  pro: {
-    maxMembers: Infinity,
-    playbooks: Infinity,     // All system playbooks + custom builder
-    manualEmails: Infinity,
-    automatedOutreach: true,
-    discordIntegration: true,
-    telegramIntegration: true,
-    aiPersonalization: true,
-    abTesting: true,
-    price: 299,
-    label: 'Pro',
-  },
-  enterprise: {
-    maxMembers: Infinity,
-    playbooks: Infinity,
-    manualEmails: Infinity,
-    automatedOutreach: true,
-    discordIntegration: true,
-    telegramIntegration: true,
-    aiPersonalization: true,
-    abTesting: true,
-    multiCommunity: true,
-    whiteLabel: true,
-    price: 999,
-    label: 'Enterprise',
-  },
-} as const;
-
-export type PlanTier = keyof typeof PLAN_LIMITS;
-
-// Helper: check if a feature is available for a given tier
-export function canAccess(tier: PlanTier, feature: keyof typeof PLAN_LIMITS['free']): boolean {
-  return !!PLAN_LIMITS[tier][feature];
-}
-
-// Helper: get the next upgrade tier
-export function getUpgradeTier(current: PlanTier): PlanTier | null {
-  const order: PlanTier[] = ['free', 'starter', 'growth', 'pro', 'enterprise'];
-  const idx = order.indexOf(current);
-  return idx < order.length - 1 ? order[idx + 1] : null;
-}
-```
-
-**Free tier is read-only:** Users see risk scores and the member list but CANNOT send emails, start playbooks, or take any action. Every screen should show an `<UpgradePrompt>` component when the user tries to interact with a gated feature.
+| Tier | Price | Members | Playbooks | Key Gates |
+|------|-------|---------|-----------|-----------|
+| Free | $0 | 50 | 0 | Read-only dashboard, no outreach |
+| Starter | $49 | 500 | 1 | Manual emails, Discord integration |
+| Growth | $149 | 2,000 | 3 | Automated outreach, AI, A/B testing, Telegram |
+| Pro | $299 | ∞ | ∞ | All system playbooks + custom builder |
+| Enterprise | $999 | ∞ | ∞ | Multi-community, white-label |
 
 ---
 
-## Risk Scoring Algorithm
+## Risk Scoring
 
-This is the core engine. V1 works with Whop API data ONLY — no engagement data required.
+Implemented in `src/lib/risk-scoring.ts`. Scores 0-100 from 6 weighted factors:
 
-```typescript
-// src/lib/risk-scoring.ts
+1. **Renewal proximity** (0-15pts) + **Cancellation scheduled** (0-10pts)
+2. **Payment failures** (0-25pts)
+3. **Early lifecycle** (0-20pts): new member + no engagement visibility
+4. **First renewal approaching** (0-15pts)
+5. **Previous cancellations** (0-10pts)
+6. **Low engagement** (0-30pts, requires Layer 2/3/4 data)
 
-interface RiskFactor {
-  factor: string;
-  severity: 'critical' | 'high' | 'medium' | 'low';
-  points: number;
-  description: string;
-}
-
-interface RiskResult {
-  score: number;         // 0-100
-  level: 'low' | 'medium' | 'high' | 'critical';
-  factors: RiskFactor[];
-  confidence: 'low' | 'medium' | 'high';
-}
-
-export function calculateChurnRisk(member: Member): RiskResult {
-  let score = 0;
-  const factors: RiskFactor[] = [];
-  
-  // 1. RENEWAL PROXIMITY + CANCELLATION (0-25 points)
-  const daysUntilRenewal = member.days_until_renewal;
-  if (daysUntilRenewal !== null && daysUntilRenewal <= 7 && daysUntilRenewal > 0) {
-    score += 15;
-    factors.push({
-      factor: 'renewal_imminent',
-      severity: 'high',
-      points: 15,
-      description: `Renewal in ${daysUntilRenewal} days`,
-    });
-  }
-  
-  if (member.cancel_at_period_end) {
-    score += 10;
-    factors.push({
-      factor: 'cancellation_scheduled',
-      severity: 'critical',
-      points: 10,
-      description: 'Cancellation scheduled at period end',
-    });
-  }
-  
-  // 2. PAYMENT FAILURES (0-25 points)
-  if (member.recent_payment_failures > 0) {
-    const pts = member.recent_payment_failures >= 2 ? 25 : 20;
-    score += pts;
-    factors.push({
-      factor: 'payment_failure',
-      severity: 'critical',
-      points: pts,
-      description: `${member.recent_payment_failures} failed payment(s) in last 30 days`,
-    });
-  }
-  
-  // 3. EARLY LIFECYCLE RISK (0-20 points)
-  if (member.tenure_days < 14) {
-    score += 10;
-    factors.push({
-      factor: 'new_member',
-      severity: 'medium',
-      points: 10,
-      description: `Joined ${member.tenure_days} days ago — critical onboarding window`,
-    });
-    if (!member.has_engagement_data) {
-      score += 10;
-      factors.push({
-        factor: 'no_engagement_visibility',
-        severity: 'medium',
-        points: 10,
-        description: 'No engagement tracking — consider connecting Discord',
-      });
-    }
-  }
-  
-  // 4. FIRST RENEWAL APPROACHING (0-15 points)
-  if (member.tenure_days < 35 && daysUntilRenewal !== null && daysUntilRenewal <= 10) {
-    score += 15;
-    factors.push({
-      factor: 'first_renewal',
-      severity: 'high',
-      points: 15,
-      description: 'First renewal approaching — highest churn risk period',
-    });
-  }
-  
-  // 5. PREVIOUS CANCELLATIONS (0-10 points)
-  if (member.previous_cancellations > 0) {
-    score += 10;
-    factors.push({
-      factor: 'previous_cancellation',
-      severity: 'medium',
-      points: 10,
-      description: `Previously cancelled ${member.previous_cancellations} time(s)`,
-    });
-  }
-  
-  // 6. ENGAGEMENT DATA — bonus points when Layer 2/3/4 connected (0-30 points)
-  if (member.has_engagement_data && member.engagement_score !== undefined) {
-    if (member.engagement_score < 15) {
-      score += 20;
-      factors.push({
-        factor: 'very_low_engagement',
-        severity: 'high',
-        points: 20,
-        description: 'Engagement significantly below community average',
-      });
-    } else if (member.engagement_score < 30) {
-      score += 10;
-      factors.push({
-        factor: 'declining_engagement',
-        severity: 'medium',
-        points: 10,
-        description: 'Engagement declining over recent weeks',
-      });
-    }
-  }
-  
-  // Cap at 100
-  score = Math.min(score, 100);
-  
-  // Determine level
-  const level = score >= 70 ? 'critical'
-    : score >= 40 ? 'high'
-    : score >= 20 ? 'medium'
-    : 'low';
-  
-  // Confidence based on data available
-  const confidence = member.has_engagement_data ? 'high'
-    : member.tenure_days > 30 ? 'medium'
-    : 'low';
-  
-  return { score, level, factors, confidence };
-}
-```
+Levels: Critical (70-100), High (40-69), Medium (20-39), Low (0-19)
 
 ---
 
-## Whop iFrame Integration
+## Webhook Events
 
-This app renders INSIDE Whop's dashboard as an iFrame. Whop handles authentication.
-
-```typescript
-// src/lib/whop.ts
-import { WhopServerSdk } from '@whop-apps/sdk';
-
-export const whopApi = WhopServerSdk({
-  apiKey: process.env.WHOP_API_KEY!,
-  appId: process.env.WHOP_APP_ID!,
-});
-
-// In page components, get user/company context from Whop SDK.
-// This replaces traditional auth — Whop handles it via the iFrame.
-// Every API route should validate the Whop context.
-```
-
-**CRITICAL LAYOUT CONSTRAINT:** Since this renders in an iFrame inside Whop's dashboard which already has a sidebar, our app must NOT have a sidebar. Use a **sticky top navigation bar with tabs** (Dashboard, Playbooks, Analytics, Settings) as shown in the design reference.
-
----
-
-## Channel-Agnostic Outreach
-
-```typescript
-// src/lib/outreach.ts
-// Priority: email → whop_chat → discord_dm → telegram
-// Email always works (Whop provides user emails)
-
-async function sendToMember(
-  member: Member,
-  community: Community,
-  content: { subject?: string; body: string },
-  options?: { playbook_enrollment_id?: string }
-): Promise<{ channel: string; success: boolean }> {
-  const priority = community.settings.outreach_channel_priority;
-  
-  for (const channel of priority) {
-    if (canReach(member, channel, community)) {
-      try {
-        await send(channel, member, content);
-        await logOutreach({ member_id: member.id, channel, ...content, ...options });
-        return { channel, success: true };
-      } catch {
-        continue; // Try next channel
-      }
-    }
-  }
-  return { channel: 'none', success: false };
-}
-```
-
----
+Handled in `src/app/api/whop/webhook/route.ts`:
+`membership.went_valid`, `membership.went_invalid`, `membership.updated`, `payment.succeeded`, `payment.failed`, `payment.refunded`
 
 ## Background Jobs (Inngest)
 
-```typescript
-// 1. Recalculate risk scores — every 6 hours
-// 2. Execute pending playbook steps — every 15 minutes
-// 3. Sync Whop member data — every 4 hours
-// 4. Daily digest email to creator — 8am
-```
+1. Recalculate risk scores — every 6 hours
+2. Execute pending playbook steps — every 15 minutes
+3. Sync Whop member data — every 4 hours
+4. Daily digest email to creator — 8am
 
----
+## Email Templates
 
-## Whop Webhook Events to Handle
-
-```typescript
-const HANDLED_EVENTS = [
-  'membership.went_valid',      // New member or reactivation
-  'membership.went_invalid',    // Cancelled or expired
-  'membership.updated',         // Plan change, status change
-  'payment.succeeded',          // Reset payment failure count
-  'payment.failed',             // Increment failures, recalc risk
-  'payment.refunded',           // Refund issued
-];
-```
-
----
-
-## Email Templates (Starter+ Tier)
-
-4 built-in templates with variable substitution:
-
-| Template | Subject | Variables |
-|----------|---------|-----------|
-| Check-In | "Hey {firstName}, we miss you in {communityName}!" | firstName, communityName, creatorName |
-| Renewal Reminder | "Your {communityName} membership renews soon" | firstName, communityName, planName, daysUntilRenewal, creatorName |
-| Payment Recovery | "Action needed: update your payment for {communityName}" | firstName, communityName, paymentUpdateLink, creatorName |
-| Welcome / Fast Start | "Welcome to {communityName}! Here's how to get started" | firstName, communityName, creatorName, onboardingStep1-3 |
-
----
-
-## Important Implementation Notes
-
-1. **Whop iFrame context:** Every request must validate the Whop user/company context from the SDK. Never trust client-side parameters alone.
-
-2. **Free tier = read-only:** ALL action buttons (Send Email, Start Playbook, Connect Discord, etc.) should trigger an `<UpgradePrompt>` modal on the free tier. The dashboard shows risk scores and member list, but you can't DO anything.
-
-3. **Email is always available:** Whop provides user emails via their API. Email is the default outreach channel — no integration setup needed.
-
-4. **Discord DM rate limits:** When Discord integration is built, enforce: max 5 DMs/hour, 20/day per community. Never DM members who haven't interacted with the bot. Log every DM.
-
-5. **All metrics come from real data:** Do NOT hardcode fake success rates or "revenue saved" numbers. Calculate from actual outreach_log and playbook_enrollments data. If no data yet, show "—" or "Collecting data..." not fabricated numbers.
-
-6. **Risk score caching:** Scores are recalculated every 6 hours via Inngest cron job. Don't recalculate on every page load — read from the `risk_scores` table.
-
-7. **Dark mode default:** Most Whop creators use dark mode. Default to dark. Persist preference in community settings JSONB.
-
-8. **Mobile responsive:** The iFrame may render at various widths. Use 640px as the mobile breakpoint. Grid columns should collapse. The design reference handles this with `isMobile` checks.
+4 built-in templates in `src/lib/outreach.ts`: Check-In, Renewal Reminder, Payment Recovery, Welcome/Fast Start. Variables: `{firstName}`, `{communityName}`, `{creatorName}`, etc.
 
 ---
 
 ## Design System
 
-### Color Tokens
+**Colors:** Accent #6e56ff, Critical #ff4757, High #ffa502, Medium #3b82f6, Low #2ed573
+**Dark bg:** #09090b → #111114 → #16161a | **Light bg:** #f8f8fa → #ffffff
 
-```
-Primary/Accent:    #6e56ff (purple)
-Critical/Danger:   #ff4757 (red)
-High Risk:         #ffa502 (amber)
-Medium Risk:       #3b82f6 (blue)
-Low Risk/Success:  #2ed573 (green)
+**Components:** Cards (12px radius), Buttons (8px radius, 6 variants), Pills (6px radius), StatBlock (label → Outfit 800 number → sub), ProgressBar (5px), EngagementChart (8 vertical bars)
 
-Dark backgrounds:  #09090b → #111114 → #16161a
-Light backgrounds: #f8f8fa → #ffffff
-Border (dark):     rgba(255,255,255,0.06)
-Border (light):    rgba(0,0,0,0.07)
-```
+**Layout:** Max 1200px centered, 10-12px card gaps, 16-20px padding, fadeSlideIn animations (30ms stagger)
 
-### Typography
-- **Headings/Numbers:** Outfit (weight 700-900, letter-spacing -0.03em)
-- **Body:** Plus Jakarta Sans (weight 400-700)
-- **Data labels:** 11px uppercase, letter-spacing 0.05em, muted color
-
-### Component Patterns
-- **Cards:** 12px border-radius, 1px border, subtle shadow
-- **Buttons:** 8px border-radius. Variants: default, primary (purple), ghost, danger, success, accent
-- **Pills/Badges:** 6px border-radius, tinted bg + matching text color
-- **Risk indicators:** Color-coded by level (critical=red, high=amber, medium=blue, low=green)
-- **Stat blocks:** Muted uppercase label → large Outfit 800 number → optional subtitle
-- **Progress bars:** 5px height, rounded, color by context
-- **Engagement chart:** Vertical bar chart, 8 bars for weekly activity, recent bars highlighted
-
-### Layout
-- **Max width:** 1200px, centered
-- **No sidebar** — top nav + tab bar only
-- **Responsive:** grid columns collapse at <640px
-- **Spacing:** 10-12px gaps between cards, 16-20px page padding
-- **Animations:** Subtle fadeSlideIn on list items (staggered 30ms), fadeIn on screen transitions
-
----
-
-## Design Reference (UI Prototype)
-
-The file `design-reference/grip-prototype.tsx` is a **complete interactive React prototype** of the target UI. It includes all 6 screens with mock data and both dark/light themes.
-
-### How to use the design reference:
-
-1. **It is the visual truth** — match its layout, spacing, colors, typography, and component patterns exactly
-2. **Prototype uses inline styles** → Production should use **Tailwind CSS** classes
-3. **Prototype has hardcoded mock data** → Production fetches from API routes
-4. **Prototype is a single 970-line file** → Production uses the component structure defined above
-5. **Prototype's theme object** → Production should use Tailwind dark mode (`dark:` prefix) + CSS custom properties
-
-### Screens in the prototype:
-
-| Screen | Component | Key elements |
-|--------|-----------|--------------|
-| **Dashboard** | `<Dashboard>` | 4 stat blocks, data sources bar, risk filter buttons, member list table with risk score / renewal / LTV columns, action buttons per row |
-| **Member Detail** | `<MemberDetail>` | Back button, avatar + name + risk score header, 2×2 grid: subscription card, risk factors card, engagement bar chart card, playbook history card. Action bar: Send Email, Whop Chat, Add Note, Start Playbook |
-| **Playbooks** | `<PlaybooksScreen>` | 4 stat blocks (enrolled, revenue saved, manual work, ROI), playbook cards with emoji + name + step funnel bars + success rate, Pro upsell CTA |
-| **Playbook Detail** | `<PlaybookDetail>` | Header with pause/config buttons, 4 stat blocks, step funnel with numbered steps + progress bars + sent counts, recent activity feed |
-| **Analytics** | `<AnalyticsScreen>` | 4 stat blocks, risk distribution with progress bars, churn reasons breakdown, monthly impact 4-column grid |
-| **Settings** | `<SettingsScreen>` | Integrations card (connected/not), outreach channel priority (draggable order), toggles (auto-enroll, daily digest), appearance toggle, current plan card with upgrade button |
-
-### Navigation pattern:
-- **Top nav:** Logo | Divider | Community name + member count | Spacer | Sync status | Theme toggle | Notifications bell
-- **Tab bar:** Dashboard (with badge count) | Playbooks | Analytics | Settings
-- **Drill-down:** Clicking a member row → Member Detail. Clicking a playbook card → Playbook Detail. Back button returns.
-
----
-
-## Quick Start
-
-```bash
-npx create-next-app@latest grip --typescript --tailwind --app --src-dir
-cd grip
-npm install @whop-apps/sdk @supabase/supabase-js @upstash/redis resend inngest recharts
-# Copy .env.local template, fill in keys
-# Run Supabase migrations
-# Register Whop app at https://dash.whop.com/developer
-npm run dev
-```
+**Design reference:** `design-reference/grip-prototype.tsx` — visual truth for all 6 screens.
 
 ---
 
 ## Testing (TDD)
 
-This project uses **Test-Driven Development**. Write specs before or alongside implementation. All tests use **Vitest** with `@testing-library/react` for component tests.
-
-### Running Tests
-
 ```bash
-npm test              # Run all specs once
-npm run test:watch    # Watch mode (re-run on file changes)
-npm run test:coverage # Run with V8 coverage report
+npm test              # Run all specs
+npm run test:watch    # Watch mode
+npm run test:coverage # V8 coverage
 ```
 
-### Test File Conventions
-
-- **Spec files live next to the code they test**, inside `__tests__/` directories:
-  - `src/lib/__tests__/risk-scoring.spec.ts` tests `src/lib/risk-scoring.ts`
-  - `src/components/ui/__tests__/Button.spec.tsx` tests `src/components/ui/Button.tsx`
-- **File naming:** `*.spec.ts` for pure logic, `*.spec.tsx` for components
-- **Pattern:** `describe` per module/component, `it` per behavior
-
-### What to Test
-
-| Layer | What to test | Example |
-|-------|-------------|---------|
-| **lib/** | Pure functions, algorithms, helpers | Risk scoring factors, plan gating logic, currency formatting |
-| **components/** | Render output, user interactions, conditional display | RiskPill shows correct color, Button variants render correctly |
-| **API routes** | Request/response contracts, error handling | Members endpoint returns filtered list, webhook validates signature |
-| **hooks/** | State changes, data fetching behavior | useMembers returns loading then data |
-
-### TDD Workflow
-
-1. **Write the spec first** — define expected behavior before implementation
-2. **Run `npm test`** — confirm the test fails (red)
-3. **Implement the minimal code** to make the test pass (green)
-4. **Refactor** — clean up while keeping tests green
-5. **All tests must pass before committing** — run `npm test` before every commit
-
-### Testing Setup
-
-- **Config:** `vitest.config.ts` (jsdom environment, React plugin, `@/` path alias)
-- **Setup file:** `src/__tests__/setup.ts` (loads `@testing-library/jest-dom` matchers)
-- **Globals:** `describe`, `it`, `expect`, `vi` are available without imports (vitest globals enabled)
+- Specs in `__tests__/` directories next to source: `*.spec.ts` (logic), `*.spec.tsx` (components)
+- Config: `vitest.config.ts` (jsdom, React plugin, `@/` alias)
+- Setup: `src/__tests__/setup.ts` (jest-dom matchers)
+- Globals: `describe`, `it`, `expect`, `vi` available without imports
 
 ---
 
-## Build Priority
+## Environment Variables
 
-Build in this order:
-
-1. **Whop app shell** — iFrame renders, auth works, can read company/user context
-2. **Member sync** — Fetch members from Whop API, store in DB, webhook listener
-3. **Risk scoring** — Calculate scores, store in risk_scores table
-4. **Dashboard UI** — Stats row, member list, filters (matches design reference)
-5. **Member detail UI** — Subscription info, risk factors, engagement placeholder
-6. **Email outreach** — Resend integration, templates, send from member detail
-7. **Settings UI** — Integrations, preferences, plan display
-8. **Analytics UI** — Risk distribution, churn stats, revenue impact
-9. **Playbooks engine** — Step execution, enrollment, tracking (Growth tier)
-10. **Playbooks UI** — Card view, detail view with funnel
+See `.env.local` template. Required: `WHOP_API_KEY`, `WHOP_APP_ID`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `UPSTASH_REDIS_REST_URL/TOKEN`, `INNGEST_EVENT_KEY/SIGNING_KEY`, `NEXT_PUBLIC_APP_URL`.
 
 ---
 
-## Full Product Plan
+# Development Guidelines
 
-For complete business context, pricing strategy, go-to-market, competitive analysis, and revenue projections, see `complete_retention_app_plan_v2.md`.
+## Before Coding
+
+- **BP-1 (MUST)** Ask clarifying questions.
+- **BP-2 (SHOULD)** Draft and confirm approach for complex work.
+- **BP-3 (SHOULD)** If ≥ 2 approaches, list pros and cons.
+
+## While Coding
+
+- **C-1 (MUST)** Follow TDD: stub → failing test → implement.
+- **C-2 (MUST)** Use existing domain vocabulary for naming.
+- **C-3 (SHOULD NOT)** Introduce classes when functions suffice.
+- **C-4 (SHOULD)** Prefer simple, composable, testable functions.
+- **C-6 (MUST)** Use `import type { … }` for type-only imports.
+- **C-7 (SHOULD NOT)** Add comments except for critical caveats.
+- **C-8 (SHOULD)** Default to `type`; use `interface` only when merging needed.
+- **C-9 (SHOULD NOT)** Extract functions unless reused, needed for testability, or dramatically improves readability.
+
+## Testing Rules
+
+- **T-1 (MUST)** Colocate unit tests in `__tests__/*.spec.ts` next to source.
+- **T-3 (MUST)** Separate pure-logic unit tests from DB-touching integration tests.
+- **T-4 (SHOULD)** Prefer integration tests over heavy mocking.
+- **T-5 (SHOULD)** Unit-test complex algorithms thoroughly.
+- **T-6 (SHOULD)** Test entire structure in one assertion when possible.
+
+## Git
+
+- **GH-1 (MUST)** Use Conventional Commits: `feat:`, `fix:`, `refactor:`, `test:`, `chore:`, etc.
+- **GH-2 (SHOULD NOT)** Refer to Claude or Anthropic in commit messages.
+
+---
+
+## Function Quality Checklist
+
+1. Is it easy to follow? If yes, stop.
+2. High cyclomatic complexity? Probably needs simplification.
+3. Unused parameters? Remove them.
+4. Unnecessary type casts? Move to function arguments.
+5. Easily testable without mocking? If not, use integration tests.
+6. Hidden dependencies? Factor into arguments.
+7. Is the name the best choice? Brainstorm 3 alternatives.
+
+Do NOT extract separate functions unless: reused elsewhere, needed for testability, or original is extremely hard to follow.
+
+## Test Quality Checklist
+
+1. Parameterize inputs; no unexplained literals.
+2. Every test must be able to fail for a real defect.
+3. Test description must match what expect() verifies.
+4. Compare to pre-computed expectations, not function output re-used as oracle.
+5. Use strong assertions (`toEqual(1)` not `toBeGreaterThanOrEqual(1)`).
+6. Test edge cases, realistic input, and boundaries.
+7. Group under `describe(functionName, () => ...)`.
+
+---
+
+## Shortcuts
+
+| Command | Action |
+|---------|--------|
+| **QNEW** | Re-read and follow all best practices |
+| **QPLAN** | Verify plan is consistent with codebase, minimal changes, reuses existing code |
+| **QCODE** | Implement plan, run tests, run prettier, run typecheck |
+| **QCHECK** | Skeptical review: functions + tests + implementation checklists |
+| **QCHECKF** | Skeptical review: functions checklist only |
+| **QCHECKT** | Skeptical review: tests checklist only |
+| **QUX** | List UX test scenarios sorted by priority |
+| **QGIT** | Stage, commit (Conventional Commits), push |
