@@ -53,3 +53,12 @@ export interface MemberWithRisk extends Member {
   risk_level: "low" | "medium" | "high" | "critical" | null;
   data_confidence: "low" | "medium" | "high" | null;
 }
+
+/** Full member detail returned by GET /api/members/[id] */
+export interface MemberDetail extends MemberWithRisk {
+  risk_factors: import("@/types/risk").RiskFactor[];
+  risk_calculated_at: string | null;
+  activity: MemberActivity[];
+  outreach: import("@/types/playbook").OutreachLogEntry[];
+  enrollments: import("@/types/playbook").PlaybookEnrollment[];
+}
